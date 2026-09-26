@@ -1,3 +1,5 @@
+import os
+
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -6,30 +8,19 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+
 from openai import OpenAI
 
 
-# =========================
-# KEYS
-# =========================
+TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+OPENROUTER_KEY = os.environ["OPENROUTER_KEY"]
 
-TELEGRAM_TOKEN = ""
-OPENROUTER_KEY = ""
-
-
-# =========================
-# OPENROUTER
-# =========================
 
 ai = OpenAI(
     api_key=OPENROUTER_KEY,
     base_url="https://openrouter.ai/api/v1"
 )
 
-
-# =========================
-# AURENZA PERSONALITY
-# =========================
 
 SYSTEM_PROMPT = """
 You are Aurenza, an intelligent AI assistant on Telegram.
@@ -45,24 +36,14 @@ Never claim to be human.
 """
 
 
-# =========================
-# /START
-# =========================
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     await update.message.reply_text(
         "🤖 Aurenza is online!\n\n"
         "I'm ready. Send me a message."
     )
 
 
-# =========================
-# /HELP
-# =========================
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     await update.message.reply_text(
         "🤖 Aurenza Help\n\n"
         "/start — Start Aurenza\n"
@@ -72,12 +53,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# =========================
-# /NEW
-# =========================
-
 async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     context.user_data["conversation"] = []
 
     await update.message.reply_text(
@@ -85,19 +61,13 @@ async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# =========================
-# AI MESSAGE HANDLER
-# =========================
-
 async def handle_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
-
     user_message = update.message.text
 
     try:
-
         await update.message.chat.send_action("typing")
 
         conversation = context.user_data.get(
@@ -114,12 +84,10 @@ async def handle_message(
 
         messages.extend(conversation)
 
-        messages.append(
-            {
-                "role": "user",
-                "content": user_message
-            }
-        )
+        messages.append({
+            "role": "user",
+            "content": user_message
+        })
 
         response = ai.chat.completions.create(
             model="openrouter/free",
@@ -128,26 +96,21 @@ async def handle_message(
 
         answer = response.choices[0].message.content
 
-        conversation.append(
-            {
-                "role": "user",
-                "content": user_message
-            }
-        )
+        conversation.append({
+            "role": "user",
+            "content": user_message
+        })
 
-        conversation.append(
-            {
-                "role": "assistant",
-                "content": answer
-            }
-        )
+        conversation.append({
+            "role": "assistant",
+            "content": answer
+        })
 
         context.user_data["conversation"] = conversation[-20:]
 
         await update.message.reply_text(answer)
 
     except Exception as error:
-
         print("AI ERROR:", repr(error))
 
         await update.message.reply_text(
@@ -155,29 +118,16 @@ async def handle_message(
         )
 
 
-# =========================
-# MAIN
-# =========================
-
 def main():
-
     app = (
         Application.builder()
         .token(TELEGRAM_TOKEN)
         .build()
     )
 
-    app.add_handler(
-        CommandHandler("start", start)
-    )
-
-    app.add_handler(
-        CommandHandler("help", help_command)
-    )
-
-    app.add_handler(
-        CommandHandler("new", new_chat)
-    )
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("new", new_chat))
 
     app.add_handler(
         MessageHandler(
